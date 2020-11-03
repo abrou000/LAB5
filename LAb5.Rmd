@@ -1,0 +1,73 @@
+---
+title: "LAb5"
+author: "Alain Brou"
+date: "10/26/2020"
+output: html_document
+---
+
+Build on the previous lab in creating useful models.
+
+Concentrate on a smaller subset than previous. For instance if you wanted to look at wages for Hispanic women with at least a college degree, you might use
+
+```{r}
+attach(acs2017_ny)
+use_varb <- (AGE >= 25) & (AGE <= 55) & (LABFORCE == 2) & (WKSWORK2 > 4) & (UHRSWORK >= 35) & (AfAm == 1) & (female==1) & ((educ_college == 1) | (educ_advdeg == 1))
+dat_use <- subset(acs2017_ny,use_varb) # 
+detach()
+
+```
+
+
+```{r}
+mod2<- lm((INCWAGE ~ AGE + I(AGE^2) +FAMSIZE +I(FAMSIZE^2)+ I(FAMSIZE^3)))
+
+summary(mod2)
+```
+
+```{r}
+NNobserv<-length(INCWAGE)
+set.seed(123456)
+graph_observ<-(runif(NNobserv)<0.1)
+data_to_graph<-subset(dat_use,graph_observ)
+plot(INCWAGE ~ jitter(AGE, factor = 2), pch = 16, col = rgb(0.5, 0.5, 0.5, alpha = 0.2), data = dat_use)
+# ^^ that looks like crap since Wages are soooooooo skew!  So try to find some sensible ylim = c(0, ??)
+plot(INCWAGE ~ jitter(AGE, factor = 2), pch = 16, col = rgb(0.5, 0.5, 0.5, alpha = 0.2), ylim = c(0,150000), data = dat_use)
+
+```
+
+```{r}
+mod3<- lm((INCWAGE ~ AGE + I(AGE^2) + I(AGE^3) + educ_college +educ_advdeg+FAMSIZE +I(FAMSIZE^2)+ I(FAMSIZE^3)))
+
+mod4<-lm((INCWAGE ~ AGE + I(AGE^2) +I(AGE^3)+I(AGE^4)+ educ_college +educ_advdeg+FAMSIZE +I(FAMSIZE^2)+ I(FAMSIZE^3)))
+
+mod5<-lm((INCWAGE ~ AGE + I(AGE^2) +I(AGE^3)+I(AGE^4)+ educ_college))
+
+summary(mod3)
+summary(mod4)
+summary(mod5)
+```
+when the log^2(AGE) is used, the comparison of these types is not implemented, however the log(AGE) works.
+we also note that the higher order of the polynomials of AGE, the coeffcients or estimates decrease but stay stastically significant as in the mod4
+
+Also adding a dummy variable as educ_college, it makes the varibale AGE insignificant statiscally.
+
+we do not use polynomials on dummy variables because the no matter the order we still get the same number, etither o or 1 .
+
+
+
+```{r}
+library("AER")
+Im<-lm(INCWAGE ~ log(AGE) + female + I(female*AGE) + I(female*(AGE^2)+I(female*(AGE^3))+educ_college +educ_advdeg+FAMSIZE +I(FAMSIZE^2)+ I(FAMSIZE^3))) 
+Im2<-lm(log1p(INCWAGE) ~ AGE  + female + I(female*AGE) + I(female*(AGE^2)+I(female*(AGE^3))+educ_college +educ_advdeg+FAMSIZE +I(FAMSIZE^2)+ I(FAMSIZE^3)))
+summary(Im)
+graph_observ<-(runif(NNobserv)<0.1)
+data_to_graph<-subset(dat_use,graph_observ)
+plot(INCWAGE ~ jitter(AGE, factor = 2), pch = 16, col = rgb(0.5, 0.5, 0.5, alpha = 0.2), data = dat_use)
+# ^^ that looks like crap since Wages are soooooooo skew!  So try to find some sensible ylim = c(0, ??)
+plot(INCWAGE ~ jitter(AGE, factor = 2), pch = 16, col = rgb(0.5, 0.5, 0.5, alpha = 0.2), ylim = c(0,150000), data = dat_use)
+modPredict<-data.frame(AGE= 25:55, female = 1, AfAm=1,FAMSIZE=1,educ_nohs=1,educ_college = 0, educ_advdeg= 0)
+modPredict$yhat<- predict(mod4, newdata = modPredict)
+summary(modPredict)
+lines(yhat~AGE,data= modPredict)
+lines(yhat~FAMSIZE,data= modPredict)
+```
